@@ -1,0 +1,46 @@
+name: Build AuthPlugin Dylib
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # 允许你在 GitHub 页面上点击按钮手动触发编译
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: 1. 检出代码 (Checkout)
+      uses: actions/checkout@v4
+
+    - name: 2. 确认 Xcode 环境
+      run: |
+        sudo xcode-select -s /Applications/Xcode.app
+        xcodebuild -version
+
+    - name: 3. 编译为 iOS 动态库 (.dylib)
+      run: |
+        # 获取最新的 iOS SDK 路径
+        SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+        
+        # 使用 clang 编译你的 .m 文件为 arm64 架构的动态库
+        xcrun --sdk iphoneos clang -arch arm64 \
+          -dynamiclib \
+          -fobjc-arc \
+          -isysroot "$SDK_PATH" \
+          -miphoneos-version-min=12.0 \
+          -framework UIKit \
+          -framework Foundation \
+          AuthPlugin.m \
+          -o AuthPlugin.dylib
+          
+        # 输出文件信息确认编译成功
+        file AuthPlugin.dylib
+
+    - name: 4. 上传编译产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: AuthPlugin-Dylib
+        path: AuthPlugin.dylib
